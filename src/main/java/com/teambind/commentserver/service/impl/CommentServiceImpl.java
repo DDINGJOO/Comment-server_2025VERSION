@@ -1,13 +1,14 @@
 package com.teambind.commentserver.service.impl;
 
 import com.teambind.commentserver.entity.Comment;
+import com.teambind.commentserver.exceptions.CustomException;
+import com.teambind.commentserver.exceptions.ErrorCode;
 import com.teambind.commentserver.repository.CommentRepository;
 import com.teambind.commentserver.service.CommentService;
 import com.teambind.commentserver.utils.primarykey.KeyProvider;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -21,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>요구사항: - 아티클에 대한 전체 하위 댓글 조회 - 부모 댓글을 통해 대댓글(자식) 조회 - 루트 기준 스레드 전체 조회 - 소프트 삭제 처리 - 내용 수정 등 기본
  * 기능 제공
  *
- * <p>주석은 한국어로 작성되어 있으며, 테스트는 정상 시나리오만을 다룹니다.
  */
 @Service
 @RequiredArgsConstructor
@@ -55,8 +55,7 @@ public class CommentServiceImpl implements CommentService {
     Comment parent =
         commentRepository
             .findById(parentCommentId)
-            .orElseThrow(
-                () -> new IllegalArgumentException("Parent comment not found: " + parentCommentId));
+            .orElseThrow(() -> new CustomException(ErrorCode.PARENT_COMMENT_NOT_FOUND));
 
     String id = keyProvider.generateKey();
 
@@ -117,7 +116,7 @@ public class CommentServiceImpl implements CommentService {
     Comment comment =
         commentRepository
             .findById(commentId)
-            .orElseThrow(() -> new IllegalArgumentException("Comment not found: " + commentId));
+            .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
 
     if (Boolean.TRUE.equals(comment.getIsDeleted())) {
       return; // 이미 삭제된 경우 아무 작업도 하지 않음
@@ -131,11 +130,13 @@ public class CommentServiceImpl implements CommentService {
   @Transactional
   public Comment updateContents(String commentId, String newContents) {
     // 댓글 내용을 갱신한다.
-    Objects.requireNonNull(newContents, "newContents must not be null");
+    if (newContents == null || newContents.isBlank()) {
+      throw new CustomException(ErrorCode.CONTENTS_REQUIRED);
+    }
     Comment comment =
         commentRepository
             .findById(commentId)
-            .orElseThrow(() -> new IllegalArgumentException("Comment not found: " + commentId));
+            .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
     comment.setContents(newContents);
     return commentRepository.save(comment);
   }
