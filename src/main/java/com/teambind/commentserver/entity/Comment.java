@@ -6,7 +6,7 @@ import lombok.*;
 
 @Entity
 @Table(
-    name = "comment",
+    name = "comments",
     indexes = {
       @Index(name = "idx_comment_article_created", columnList = "article_id, created_at"),
       @Index(name = "idx_comment_parent", columnList = "parent_comment_id"),
@@ -38,19 +38,23 @@ public class Comment {
   private String rootCommentId; // 스레드 루트 id (self 또는 최상위 id)
 
   @Column(name = "depth", nullable = false)
+  @Builder.Default
   private Integer depth = 0; // 0: 루트, 1: 1뎁스, 2: 2뎁스
 
   @Column(name = "contents", columnDefinition = "TEXT", nullable = false)
   private String contents;
 
   @Column(name = "is_deleted", nullable = false)
+  @Builder.Default
   private Boolean isDeleted = Boolean.FALSE;
 
   @Column(name = "status", length = 32, nullable = false)
   @Enumerated(EnumType.STRING)
+  @Builder.Default
   private CommentStatus status = CommentStatus.ACTIVE; // ACTIVE, HIDDEN, BANNED, PENDING_REVIEW 등
 
   @Column(name = "reply_count", nullable = false)
+  @Builder.Default
   private Integer replyCount = 0;
 
   @Column(name = "created_at", nullable = false)
@@ -72,6 +76,7 @@ public class Comment {
     if (this.replyCount == null || this.replyCount <= 0) {
       this.replyCount = 0;
     } else {
+		
       this.replyCount = this.replyCount - 1;
     }
   }
