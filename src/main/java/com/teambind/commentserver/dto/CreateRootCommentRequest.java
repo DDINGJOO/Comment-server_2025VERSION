@@ -1,4 +1,4 @@
-package com.teambind.commentserver.web.dto;
+package com.teambind.commentserver.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;

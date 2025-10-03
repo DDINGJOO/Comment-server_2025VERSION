@@ -1,13 +1,13 @@
 package com.teambind.commentserver.controller;
 
+import com.teambind.commentserver.dto.CommentResponse;
+import com.teambind.commentserver.dto.CreateReplyRequest;
+import com.teambind.commentserver.dto.CreateRootCommentRequest;
+import com.teambind.commentserver.dto.UpdateCommentRequest;
 import com.teambind.commentserver.entity.Comment;
 import com.teambind.commentserver.exceptions.CustomException;
 import com.teambind.commentserver.exceptions.ErrorCode;
 import com.teambind.commentserver.service.CommentService;
-import com.teambind.commentserver.web.dto.CommentResponse;
-import com.teambind.commentserver.web.dto.CreateReplyRequest;
-import com.teambind.commentserver.web.dto.CreateRootCommentRequest;
-import com.teambind.commentserver.web.dto.UpdateCommentRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

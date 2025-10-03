@@ -1,4 +1,4 @@
-package com.teambind.commentserver.web.dto;
+package com.teambind.commentserver.dto;
 
 import com.teambind.commentserver.entity.Comment;
 import java.time.Instant;
