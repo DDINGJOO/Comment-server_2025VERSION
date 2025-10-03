@@ -14,7 +14,8 @@ CREATE TABLE comment
     created_at        TIMESTAMP    NOT NULL,                  -- UTC 저장 권장
     updated_at        TIMESTAMP    NOT NULL,
     deleted_at        TIMESTAMP,
-    CONSTRAINT chk_depth_range CHECK (depth BETWEEN 0 AND 2)
+    CONSTRAINT chk_depth_range CHECK (depth BETWEEN 0 AND 2),
+    CONSTRAINT chk_status_values CHECK (status IN ('ACTIVE', 'HIDDEN', 'BANNED', 'PENDING_REVIEW', 'DELETED'))
 );
 
 -- 인덱스: 조회 패턴에 맞춰 추가 (Postgres/MySQL 공통)
@@ -23,3 +24,4 @@ CREATE INDEX idx_comment_parent ON comment (parent_comment_id);
 CREATE INDEX idx_comment_root ON comment (root_comment_id);
 CREATE INDEX idx_comment_writer ON comment (writer_id);
 CREATE INDEX idx_comment_status ON comment (status);
+
