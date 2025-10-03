@@ -23,7 +23,7 @@ public class Comment {
 
   @Id
   @Column(name = "comment_id", length = 100, nullable = false)
-  private String commentId; // UUID 권장
+  private String commentId;
 
   @Column(name = "article_id", length = 100, nullable = false)
   private String articleId; // 외부 Article 서비스 id
