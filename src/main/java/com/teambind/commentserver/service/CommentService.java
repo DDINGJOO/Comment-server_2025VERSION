@@ -29,9 +29,9 @@ public interface CommentService {
   /** 단건 조회 */
   Optional<Comment> getById(String commentId);
 
-  /** 소프트 삭제 */
-  void softDelete(String commentId);
+  /** 소프트 삭제 (작성자 본인만 가능) */
+  void softDelete(String commentId, String requesterId);
 
-  /** 댓글 내용 수정 */
-  Comment updateContents(String commentId, String newContents);
+  /** 댓글 내용 수정 (작성자 본인만 가능) */
+  Comment updateContents(String commentId, String requesterId, String newContents);
 }

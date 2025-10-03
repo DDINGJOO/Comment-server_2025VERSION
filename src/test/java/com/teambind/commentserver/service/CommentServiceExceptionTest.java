@@ -42,7 +42,7 @@ class CommentServiceExceptionTest {
     String invalidId = "nope";
 
     // when & then
-    assertThatThrownBy(() -> commentService.softDelete(invalidId))
+    assertThatThrownBy(() -> commentService.softDelete(invalidId, "user-1"))
         .isInstanceOf(CustomException.class)
         .hasMessage(ErrorCode.COMMENT_NOT_FOUND.getMessage())
         .satisfies(
@@ -58,7 +58,7 @@ class CommentServiceExceptionTest {
     String invalidId = "missing";
 
     // when & then
-    assertThatThrownBy(() -> commentService.updateContents(invalidId, "any"))
+    assertThatThrownBy(() -> commentService.updateContents(invalidId, "user-1", "any"))
         .isInstanceOf(CustomException.class)
         .hasMessage(ErrorCode.COMMENT_NOT_FOUND.getMessage())
         .satisfies(
@@ -74,7 +74,7 @@ class CommentServiceExceptionTest {
     String dummyId = "dummy"; // 존재 여부와 무관하게 contents null 체크가 먼저 수행되지 않음에 유의
 
     // when & then
-    assertThatThrownBy(() -> commentService.updateContents(dummyId, null))
+    assertThatThrownBy(() -> commentService.updateContents(dummyId, "user-1", null))
         .isInstanceOf(CustomException.class)
         .hasMessage(ErrorCode.CONTENTS_REQUIRED.getMessage())
         .satisfies(
@@ -90,7 +90,7 @@ class CommentServiceExceptionTest {
     String dummyId = "dummy";
 
     // when & then
-    assertThatThrownBy(() -> commentService.updateContents(dummyId, "  \t\n"))
+    assertThatThrownBy(() -> commentService.updateContents(dummyId, "user-1", "  \t\n"))
         .isInstanceOf(CustomException.class)
         .hasMessage(ErrorCode.CONTENTS_REQUIRED.getMessage())
         .satisfies(

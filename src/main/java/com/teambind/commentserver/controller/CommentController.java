@@ -79,14 +79,15 @@ public class CommentController {
   @PatchMapping("/{id}")
   public ResponseEntity<CommentResponse> update(
       @PathVariable String id, @Valid @RequestBody UpdateCommentRequest req) {
-    Comment updated = commentService.updateContents(id, req.getContents());
+    Comment updated = commentService.updateContents(id, req.getWriterId(), req.getContents());
     return ResponseEntity.ok(CommentResponse.from(updated));
   }
 
-  // 소프트 삭제
+  // 소프트 삭제 (작성자 본인만)
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> delete(@PathVariable String id) {
-    commentService.softDelete(id);
+  public ResponseEntity<Void> delete(
+      @PathVariable String id, @RequestParam("writerId") String writerId) {
+    commentService.softDelete(id, writerId);
     return ResponseEntity.noContent().build();
   }
 }

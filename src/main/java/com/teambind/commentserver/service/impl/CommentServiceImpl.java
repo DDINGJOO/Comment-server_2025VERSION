@@ -111,12 +111,16 @@ public class CommentServiceImpl implements CommentService {
 
   @Override
   @Transactional
-  public void softDelete(String commentId) {
-    // 소프트 삭제: 플래그 및 상태만 변경한다. (실제 삭제 아님)
+  public void softDelete(String commentId, String requesterId) {
+    // 소프트 삭제: 작성자 본인만 가능
     Comment comment =
         commentRepository
             .findById(commentId)
             .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+
+    if (!comment.getWriterId().equals(requesterId)) {
+      throw new CustomException(ErrorCode.NOT_COMMENT_OWNER);
+    }
 
     if (Boolean.TRUE.equals(comment.getIsDeleted())) {
       return; // 이미 삭제된 경우 아무 작업도 하지 않음
@@ -128,8 +132,8 @@ public class CommentServiceImpl implements CommentService {
 
   @Override
   @Transactional
-  public Comment updateContents(String commentId, String newContents) {
-    // 댓글 내용을 갱신한다.
+  public Comment updateContents(String commentId, String requesterId, String newContents) {
+    // 댓글 내용을 갱신한다. 작성자 본인만 가능
     if (newContents == null || newContents.isBlank()) {
       throw new CustomException(ErrorCode.CONTENTS_REQUIRED);
     }
@@ -137,6 +141,11 @@ public class CommentServiceImpl implements CommentService {
         commentRepository
             .findById(commentId)
             .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
+
+    if (!comment.getWriterId().equals(requesterId)) {
+      throw new CustomException(ErrorCode.NOT_COMMENT_OWNER);
+    }
+
     comment.setContents(newContents);
     return commentRepository.save(comment);
   }

@@ -71,7 +71,7 @@ class CommentServiceIntegrationTest {
     Comment c2 = commentService.createRootComment(articleId, "user-2", "c2");
 
     // 삭제 1건
-    commentService.softDelete(c1.getCommentId());
+    commentService.softDelete(c1.getCommentId(), c1.getWriterId());
 
     // when
     List<Comment> list = commentService.getAllCommentsByArticle(articleId);
@@ -123,8 +123,8 @@ class CommentServiceIntegrationTest {
     Comment c = commentService.createRootComment("article-5", "user-1", "old");
 
     // when
-    Comment updated = commentService.updateContents(c.getCommentId(), "new");
-    commentService.softDelete(updated.getCommentId());
+    Comment updated = commentService.updateContents(c.getCommentId(), c.getWriterId(), "new");
+    commentService.softDelete(updated.getCommentId(), updated.getWriterId());
 
     // then
     Comment fetched = commentService.getById(updated.getCommentId()).orElseThrow();
