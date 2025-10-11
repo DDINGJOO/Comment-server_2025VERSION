@@ -85,22 +85,21 @@ public class CommentServiceImpl implements CommentService {
   @Transactional(readOnly = true)
   public List<Comment> getAllCommentsByArticle(String articleId) {
     // 삭제되지 않은 댓글만 생성일 기준 오름차순으로 반환
-    return commentRepository.findByArticleIdAndIsDeletedFalseOrderByCreatedAtAsc(articleId);
+    return commentRepository.findByArticleIdOrderByCreatedAtAsc(articleId);
   }
 
   @Override
   @Transactional(readOnly = true)
   public List<Comment> getRepliesByParent(String parentCommentId) {
     // 특정 부모의 자식 댓글(대댓글)만 조회
-    return commentRepository.findByParentCommentIdAndIsDeletedFalseOrderByCreatedAtAsc(
-        parentCommentId);
+    return commentRepository.findByParentCommentIdOrderByCreatedAtAsc(parentCommentId);
   }
 
   @Override
   @Transactional(readOnly = true)
   public List<Comment> getThreadByRoot(String rootCommentId) {
     // 루트 댓글 id 기준으로 스레드 전체를 조회
-    return commentRepository.findByRootCommentIdAndIsDeletedFalseOrderByCreatedAtAsc(rootCommentId);
+    return commentRepository.findByRootCommentIdOrderByCreatedAtAsc(rootCommentId);
   }
 
   @Override

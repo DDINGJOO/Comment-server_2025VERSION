@@ -1,5 +1,5 @@
 -- sql
-CREATE TABLE comment
+CREATE TABLE comments
 (
     comment_id        VARCHAR(100) PRIMARY KEY,               -- UUID 권장 (예: uuid_generate_v4() 결과를 문자열로 저장)
     article_id        VARCHAR(100) NOT NULL,                  -- 외부 Article 서비스 id (FK 미설정 권장)
@@ -19,9 +19,9 @@ CREATE TABLE comment
 );
 
 -- 인덱스: 조회 패턴에 맞춰 추가 (Postgres/MySQL 공통)
-CREATE INDEX idx_comment_article_created ON comment (article_id, created_at);
-CREATE INDEX idx_comment_parent ON comment (parent_comment_id);
-CREATE INDEX idx_comment_root ON comment (root_comment_id);
-CREATE INDEX idx_comment_writer ON comment (writer_id);
-CREATE INDEX idx_comment_status ON comment (status);
+CREATE INDEX idx_comment_article_created ON comments (article_id, created_at);
+CREATE INDEX idx_comment_parent ON comments (parent_comment_id);
+CREATE INDEX idx_comment_root ON comments (root_comment_id);
+CREATE INDEX idx_comment_writer ON comments (writer_id);
+CREATE INDEX idx_comment_status ON comments (status);
 

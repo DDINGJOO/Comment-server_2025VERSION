@@ -7,9 +7,10 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, String> {
-  List<Comment> findByArticleIdAndIsDeletedFalseOrderByCreatedAtAsc(String articleId);
 
-  List<Comment> findByParentCommentIdAndIsDeletedFalseOrderByCreatedAtAsc(String parentCommentId);
+  List<Comment> findByParentCommentIdOrderByCreatedAtAsc(String parentCommentId);
 
-  List<Comment> findByRootCommentIdAndIsDeletedFalseOrderByCreatedAtAsc(String rootCommentId);
+  List<Comment> findByArticleIdOrderByCreatedAtAsc(String articleId);
+
+  List<Comment> findByRootCommentIdOrderByCreatedAtAsc(String rootCommentId);
 }
