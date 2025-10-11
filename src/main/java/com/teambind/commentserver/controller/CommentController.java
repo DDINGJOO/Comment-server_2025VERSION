@@ -41,11 +41,27 @@ public class CommentController {
 
   // 특정 아티클의 삭제되지 않은 전체 댓글 조회
   @GetMapping("/article/{articleId}")
-  public ResponseEntity<List<CommentResponse>> getByArticle(@PathVariable String articleId) {
+  public ResponseEntity<List<CommentResponse>> getByArticle(
+      @PathVariable String articleId,
+      @RequestParam(value = "page", required = false, defaultValue = "0") int page,
+      @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize,
+      @RequestParam(value = "mode", required = false, defaultValue = "visibleCount") String mode) {
+    /*
+    mode:
+      - "visibleCount" (기본) : 루트 단위로 화면에 표시되는 댓글 수(루트+자식 합)를 pageSize로 페이징.
+      - "all" : 기존 방식으로 모든 댓글을 룩업해 반환 (기존 getAllCommentsByArticle 동작).
+    */
+    if ("all".equalsIgnoreCase(mode)) {
+      List<CommentResponse> list =
+          commentService.getAllCommentsByArticle(articleId).stream()
+              .map(CommentResponse::from)
+              .toList();
+      return ResponseEntity.ok(list);
+    }
+
+    // 기본: visibleCount 방식 (네이티브 윈도우 기반 페이징 사용)
     List<CommentResponse> list =
-        commentService.getAllCommentsByArticle(articleId).stream()
-            .map(CommentResponse::from)
-            .toList();
+        commentService.getCommentsByArticleByVisibleCount(articleId, page, pageSize);
     return ResponseEntity.ok(list);
   }
 

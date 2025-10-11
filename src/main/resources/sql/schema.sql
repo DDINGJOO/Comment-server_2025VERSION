@@ -25,3 +25,12 @@ CREATE INDEX idx_comment_root ON comments (root_comment_id);
 CREATE INDEX idx_comment_writer ON comments (writer_id);
 CREATE INDEX idx_comment_status ON comments (status);
 
+CREATE TABLE article_comment_counts
+(
+    article_id    VARCHAR(100) NOT NULL PRIMARY KEY,
+    comment_count INT          NOT NULL DEFAULT 0,
+    updated_at    TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    INDEX (comment_count)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
