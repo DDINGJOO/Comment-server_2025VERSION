@@ -1,5 +1,6 @@
 package com.teambind.commentserver.service.impl;
 
+import com.teambind.commentserver.dto.CommentResponse;
 import com.teambind.commentserver.entity.Comment;
 import com.teambind.commentserver.exceptions.CustomException;
 import com.teambind.commentserver.exceptions.ErrorCode;
@@ -7,10 +8,8 @@ import com.teambind.commentserver.repository.CommentRepository;
 import com.teambind.commentserver.service.ArticleCommentCountService;
 import com.teambind.commentserver.service.CommentService;
 import com.teambind.commentserver.utils.primarykey.KeyProvider;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -173,5 +172,47 @@ public class CommentServiceImpl implements CommentService {
                     Comment::getRootCommentId, Comparator.nullsFirst(String::compareTo))
                 .thenComparing(Comment::getCreatedAt))
         .toList();
+  }
+
+  /**
+   * 루트 단위로 "화면에 표시되는 댓글 수(루트 + 자식 합)" 기준 페이징. page: 0-based, pageSize: 한 화면에 보이는 총 댓글 개수 (루트 포함)
+   */
+  @Transactional(readOnly = true)
+  public List<CommentResponse> getCommentsByArticleByVisibleCount(
+      String articleId, int page, int pageSize) {
+    long prevLimit = (long) page * pageSize;
+    long currLimit = (long) (page + 1) * pageSize;
+
+    List<String> rootIds = commentRepository.findRootIdsForPage(articleId, prevLimit, currLimit);
+    if (rootIds == null || rootIds.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    // 루트 + 자식들을 한 번에 조회
+    List<Comment> rows = commentRepository.findRootsAndChildrenByRootIds(articleId, rootIds);
+
+    // 루트 순서를 보장하기 위해 LinkedHashMap 사용
+    Map<String, CommentResponse> rootMap = new LinkedHashMap<>();
+    for (String rootId : rootIds) {
+      rootMap.put(rootId, null); // placeholder to preserve order
+    }
+
+    for (Comment c : rows) {
+      if (c.getDepth() == 0) {
+        rootMap.put(c.getCommentId(), CommentResponse.from(c));
+      } else {
+        String rootId = c.getRootCommentId();
+        CommentResponse rootDto = rootMap.get(rootId);
+        if (rootDto == null) {
+          // 루트 DTO가 아직 placeholder인 경우, 생성
+          rootDto = CommentResponse.from(commentRepository.findById(rootId).orElse(c));
+          rootMap.put(rootId, rootDto);
+        }
+        rootDto.addReply(CommentResponse.from(c));
+      }
+    }
+
+    // 결과 리스트(루트 순서대로)
+    return rootMap.values().stream().filter(Objects::nonNull).collect(Collectors.toList());
   }
 }
