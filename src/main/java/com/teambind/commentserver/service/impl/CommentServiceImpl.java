@@ -4,6 +4,7 @@ import com.teambind.commentserver.entity.Comment;
 import com.teambind.commentserver.exceptions.CustomException;
 import com.teambind.commentserver.exceptions.ErrorCode;
 import com.teambind.commentserver.repository.CommentRepository;
+import com.teambind.commentserver.service.ArticleCommentCountService;
 import com.teambind.commentserver.service.CommentService;
 import com.teambind.commentserver.utils.primarykey.KeyProvider;
 import java.util.Comparator;
@@ -29,6 +30,7 @@ public class CommentServiceImpl implements CommentService {
 
   private final CommentRepository commentRepository; // 댓글 저장소 (JPA)
   private final KeyProvider keyProvider; // 고유 키 발급기 (Snowflake)
+  private final ArticleCommentCountService articleCommentCountService; // 추가: 아티클별 카운트 서비스
 
   @Override
   @Transactional
@@ -45,7 +47,12 @@ public class CommentServiceImpl implements CommentService {
             .rootCommentId(id)
             .build();
 
-    return commentRepository.save(comment);
+    Comment saved = commentRepository.save(comment);
+
+    // 생성 완료 후 article_comment_counts 카운트 증가
+    articleCommentCountService.increment(articleId);
+
+    return saved;
   }
 
   @Override
@@ -78,7 +85,12 @@ public class CommentServiceImpl implements CommentService {
     parent.incrementReplyCount();
     commentRepository.save(parent);
 
-    return commentRepository.save(reply);
+    Comment savedReply = commentRepository.save(reply);
+
+    // 생성 완료 후 article_comment_counts 카운트 증가 (부모와 동일한 article)
+    articleCommentCountService.increment(parent.getArticleId());
+
+    return savedReply;
   }
 
   @Override
