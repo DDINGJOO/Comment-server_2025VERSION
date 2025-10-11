@@ -1,5 +1,6 @@
 package com.teambind.commentserver.service;
 
+import com.teambind.commentserver.dto.CommentResponse;
 import com.teambind.commentserver.entity.Comment;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,9 @@ public interface CommentService {
 
   /** 특정 아티클의 삭제되지 않은 전체 댓글 조회 (생성일 오름차순) */
   List<Comment> getAllCommentsByArticle(String articleId);
+
+  List<CommentResponse> getCommentsByArticleByVisibleCount(
+      String articleId, int page, int pageSize);
 
   /** 특정 부모 댓글의 자식(대댓글) 조회 */
   List<Comment> getRepliesByParent(String parentCommentId);
