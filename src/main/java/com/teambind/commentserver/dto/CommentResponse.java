@@ -62,15 +62,15 @@ public class CommentResponse {
 						      }
 					      case HIDDEN -> { // 신고/검토로 숨김: 내용 대체, 프론트에 숨김 표기
 						        contents = "숨김 처리된 댓글입니다.";
-						        visible = false;
+        visible = true;
 						      }
 					      case BANNED -> { // 정책 위반: 내용을 완전 가리고 visible=false
 						        contents = "제재된 댓글입니다.";
-						        visible = false;
+        visible = true;
 						      }
 					      case PENDING_REVIEW -> { // 검토중: 노출 여부 정책에 따라 숨기거나 요약 노출 가능 (여기선 숨김)
 						        contents = "검토 중인 댓글입니다.";
-						        visible = false;
+        visible = true;
 						      }
 					      case DELETED -> { // status가 DELETED인 경우 (isDeleted는 false면 드문 케이스) — treat as deleted
 						        contents = "삭제된 댓글입니다.";
