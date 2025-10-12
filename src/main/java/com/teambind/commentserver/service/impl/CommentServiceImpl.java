@@ -11,6 +11,7 @@ import com.teambind.commentserver.exceptions.ErrorCode;
 import com.teambind.commentserver.repository.CommentRepository;
 import com.teambind.commentserver.service.ArticleCommentCountService;
 import com.teambind.commentserver.service.CommentService;
+import com.teambind.commentserver.service.FirstCommentGate;
 import com.teambind.commentserver.utils.primarykey.KeyProvider;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -35,6 +36,7 @@ public class CommentServiceImpl implements CommentService {
   private final KeyProvider keyProvider; // 고유 키 발급기 (Snowflake)
   private final ArticleCommentCountService articleCommentCountService; // 추가: 아티클별 카운트 서비스
   private final EventPublisher eventPublisher; // 이벤트 퍼블리셔
+  private final FirstCommentGate firstCommentGate; // 첫 댓글 이벤트 발행을 제어하는 Redis 게이트
 
   @Override
   @Transactional
@@ -56,11 +58,9 @@ public class CommentServiceImpl implements CommentService {
     // 생성 완료 후 article_comment_counts 카운트 증가
     articleCommentCountService.increment(articleId);
 
-    // 이벤트: 해당 사용자가 해당 게시글에 단 첫 댓글인지 체크 후 발행
-    long userCount =
-        commentRepository.countByArticleIdAndWriterIdAndIsDeletedFalseAndStatus(
-            articleId, writerId, CommentStatus.ACTIVE);
-    if (userCount == 1) {
+    // 이벤트: 해당 사용자가 해당 게시글에 단 첫 댓글인지(2일 윈도우) Redis로 판단하여 발행
+    // 한국어 주석: Redis SETNX(+TTL 2일) 성공 시에만 이벤트 발행. 실패 시(이미 존재) 스킵.
+    if (firstCommentGate.isFirstWithinWindow(articleId, writerId)) {
       eventPublisher.CommentCreateEvent(
           CommentCreatedEvent.builder()
               .writerId(writerId)
@@ -107,11 +107,8 @@ public class CommentServiceImpl implements CommentService {
     // 생성 완료 후 article_comment_counts 카운트 증가 (부모와 동일한 article)
     articleCommentCountService.increment(parent.getArticleId());
 
-    // 이벤트: 해당 사용자가 해당 게시글에 단 첫 댓글인지 체크 후 발행
-    long userCount =
-        commentRepository.countByArticleIdAndWriterIdAndIsDeletedFalseAndStatus(
-            parent.getArticleId(), writerId, CommentStatus.ACTIVE);
-    if (userCount == 1) {
+    // 이벤트: 해당 사용자가 해당 게시글에 단 첫 댓글인지(2일 윈도우) Redis로 판단하여 발행
+    if (firstCommentGate.isFirstWithinWindow(parent.getArticleId(), writerId)) {
       eventPublisher.CommentCreateEvent(
           CommentCreatedEvent.builder()
               .writerId(writerId)
