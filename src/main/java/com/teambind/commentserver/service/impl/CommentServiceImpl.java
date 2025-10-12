@@ -2,12 +2,17 @@ package com.teambind.commentserver.service.impl;
 
 import com.teambind.commentserver.dto.CommentResponse;
 import com.teambind.commentserver.entity.Comment;
+import com.teambind.commentserver.entity.Comment.CommentStatus;
+import com.teambind.commentserver.event.publish.CommentCreatedEvent;
+import com.teambind.commentserver.event.publish.CommentDeletedEvent;
+import com.teambind.commentserver.event.publish.EventPublisher;
 import com.teambind.commentserver.exceptions.CustomException;
 import com.teambind.commentserver.exceptions.ErrorCode;
 import com.teambind.commentserver.repository.CommentRepository;
 import com.teambind.commentserver.service.ArticleCommentCountService;
 import com.teambind.commentserver.service.CommentService;
 import com.teambind.commentserver.utils.primarykey.KeyProvider;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -29,6 +34,7 @@ public class CommentServiceImpl implements CommentService {
   private final CommentRepository commentRepository; // 댓글 저장소 (JPA)
   private final KeyProvider keyProvider; // 고유 키 발급기 (Snowflake)
   private final ArticleCommentCountService articleCommentCountService; // 추가: 아티클별 카운트 서비스
+  private final EventPublisher eventPublisher; // 이벤트 퍼블리셔
 
   @Override
   @Transactional
@@ -46,9 +52,22 @@ public class CommentServiceImpl implements CommentService {
             .build();
 
     Comment saved = commentRepository.save(comment);
-
+    // TODO : 쿼리 최적화해야합니다.
     // 생성 완료 후 article_comment_counts 카운트 증가
     articleCommentCountService.increment(articleId);
+
+    // 이벤트: 해당 사용자가 해당 게시글에 단 첫 댓글인지 체크 후 발행
+    long userCount =
+        commentRepository.countByArticleIdAndWriterIdAndIsDeletedFalseAndStatus(
+            articleId, writerId, CommentStatus.ACTIVE);
+    if (userCount == 1) {
+      eventPublisher.CommentCreateEvent(
+          CommentCreatedEvent.builder()
+              .writerId(writerId)
+              .articleId(articleId)
+              .createdAt(LocalDateTime.now())
+              .build());
+    }
 
     return saved;
   }
@@ -87,6 +106,19 @@ public class CommentServiceImpl implements CommentService {
 
     // 생성 완료 후 article_comment_counts 카운트 증가 (부모와 동일한 article)
     articleCommentCountService.increment(parent.getArticleId());
+
+    // 이벤트: 해당 사용자가 해당 게시글에 단 첫 댓글인지 체크 후 발행
+    long userCount =
+        commentRepository.countByArticleIdAndWriterIdAndIsDeletedFalseAndStatus(
+            parent.getArticleId(), writerId, CommentStatus.ACTIVE);
+    if (userCount == 1) {
+      eventPublisher.CommentCreateEvent(
+          CommentCreatedEvent.builder()
+              .writerId(writerId)
+              .articleId(parent.getArticleId())
+              .createdAt(LocalDateTime.now())
+              .build());
+    }
 
     return savedReply;
   }
@@ -137,6 +169,19 @@ public class CommentServiceImpl implements CommentService {
 
     comment.markDeleted();
     commentRepository.save(comment);
+
+    // 이벤트: 해당 게시글의 남은 활성 댓글 수가 0이면(마지막 댓글 삭제) 이벤트 발행
+    long remain =
+        commentRepository.countByArticleIdAndIsDeletedFalseAndStatus(
+            comment.getArticleId(), CommentStatus.ACTIVE);
+    if (remain == 0) {
+      eventPublisher.CommentDeleteEvent(
+          CommentDeletedEvent.builder()
+              .writerId(comment.getWriterId())
+              .articleId(comment.getArticleId())
+              .createdAt(LocalDateTime.now())
+              .build());
+    }
   }
 
   @Override

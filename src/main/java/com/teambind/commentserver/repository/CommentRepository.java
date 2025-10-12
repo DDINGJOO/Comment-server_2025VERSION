@@ -1,6 +1,7 @@
 package com.teambind.commentserver.repository;
 
 import com.teambind.commentserver.entity.Comment;
+import com.teambind.commentserver.entity.Comment.CommentStatus;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -50,4 +51,9 @@ public interface CommentRepository extends JpaRepository<Comment, String> {
           + "ORDER BY COALESCE(c.rootCommentId, c.commentId), c.depth, c.createdAt")
   List<Comment> findRootsAndChildrenByRootIds(
       @Param("articleId") String articleId, @Param("rootIds") List<String> rootIds);
+
+  long countByArticleIdAndWriterIdAndIsDeletedFalseAndStatus(
+      String articleId, String writerId, CommentStatus status);
+
+  long countByArticleIdAndIsDeletedFalseAndStatus(String articleId, CommentStatus status);
 }
