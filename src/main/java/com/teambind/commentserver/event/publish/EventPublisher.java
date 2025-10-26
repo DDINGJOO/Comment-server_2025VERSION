@@ -2,6 +2,8 @@ package com.teambind.commentserver.event.publish;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.teambind.commentserver.event.events.CommentCreatedEvent;
+import com.teambind.commentserver.event.events.CommentDeletedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;

@@ -1,6 +1,6 @@
 package com.teambind.commentserver.utils.primarykey;
 
-public interface KeyProvider {
+public interface PrimaryKeyProvider {
   String generateKey();
 
   Long generateLongKey();
