@@ -1,4 +1,4 @@
-package com.teambind.commentserver.event.publish;
+package com.teambind.commentserver.event.events;
 
 import java.time.LocalDateTime;
 import lombok.*;
@@ -8,7 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CommentDeletedEvent {
+public class CommentCreatedEvent {
   private String writerId;
   private String articleId;
   private LocalDateTime createdAt;

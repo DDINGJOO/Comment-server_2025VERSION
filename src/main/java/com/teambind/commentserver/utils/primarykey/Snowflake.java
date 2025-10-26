@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Primary
 @RequiredArgsConstructor
-public class Snowflake implements KeyProvider {
+public class Snowflake implements PrimaryKeyProvider {
 
   // ===== Bit Allocation =====
   private static final int NODE_ID_BITS = 10;

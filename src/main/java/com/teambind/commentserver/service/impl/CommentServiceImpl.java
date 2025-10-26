@@ -3,8 +3,8 @@ package com.teambind.commentserver.service.impl;
 import com.teambind.commentserver.dto.CommentResponse;
 import com.teambind.commentserver.entity.Comment;
 import com.teambind.commentserver.entity.Comment.CommentStatus;
-import com.teambind.commentserver.event.publish.CommentCreatedEvent;
-import com.teambind.commentserver.event.publish.CommentDeletedEvent;
+import com.teambind.commentserver.event.events.CommentCreatedEvent;
+import com.teambind.commentserver.event.events.CommentDeletedEvent;
 import com.teambind.commentserver.event.publish.EventPublisher;
 import com.teambind.commentserver.exceptions.CustomException;
 import com.teambind.commentserver.exceptions.ErrorCode;
@@ -12,7 +12,7 @@ import com.teambind.commentserver.repository.CommentRepository;
 import com.teambind.commentserver.service.ArticleCommentCountService;
 import com.teambind.commentserver.service.CommentService;
 import com.teambind.commentserver.service.FirstCommentGate;
-import com.teambind.commentserver.utils.primarykey.KeyProvider;
+import com.teambind.commentserver.utils.primarykey.PrimaryKeyProvider;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CommentServiceImpl implements CommentService {
 
   private final CommentRepository commentRepository; // 댓글 저장소 (JPA)
-  private final KeyProvider keyProvider; // 고유 키 발급기 (Snowflake)
+  private final PrimaryKeyProvider primaryKeyProvider; // 고유 키 발급기 (Snowflake)
   private final ArticleCommentCountService articleCommentCountService; // 추가: 아티클별 카운트 서비스
   private final EventPublisher eventPublisher; // 이벤트 퍼블리셔
   private final FirstCommentGate firstCommentGate; // 첫 댓글 이벤트 발행을 제어하는 Redis 게이트
@@ -42,7 +42,7 @@ public class CommentServiceImpl implements CommentService {
   @Transactional
   public Comment createRootComment(String articleId, String writerId, String contents) {
     // 루트 댓글은 자기 자신을 rootCommentId로 설정하고 depth=0 으로 저장한다.
-    String id = keyProvider.generateKey();
+    String id = primaryKeyProvider.generateKey();
     Comment comment =
         Comment.builder()
             .commentId(id)
@@ -81,7 +81,7 @@ public class CommentServiceImpl implements CommentService {
             .findById(parentCommentId)
             .orElseThrow(() -> new CustomException(ErrorCode.PARENT_COMMENT_NOT_FOUND));
 
-    String id = keyProvider.generateKey();
+    String id = primaryKeyProvider.generateKey();
 
     // 부모의 rootCommentId가 없으면 부모 자신이 루트이므로 부모 id를 사용한다.
     Comment reply =
