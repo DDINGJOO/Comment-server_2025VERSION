@@ -47,12 +47,21 @@ public class ArticleCommentCount {
     this.updatedAt = Instant.now();
   }
 
-  // 편의 메서드
+  /**
+   * 댓글 수를 1 증가시킵니다. (도메인 메서드)
+   */
   public void increment() {
-    if (this.commentCount == null) this.commentCount = 0;
+    if (this.commentCount == null) {
+      this.commentCount = 0;
+    }
     this.commentCount = this.commentCount + 1;
   }
 
+  /**
+   * 댓글 수를 1 감소시킵니다. (도메인 메서드)
+   *
+   * <p>0 미만으로 내려가지 않도록 방어합니다.
+   */
   public void decrement() {
     if (this.commentCount == null || this.commentCount <= 0) {
       this.commentCount = 0;
@@ -61,7 +70,15 @@ public class ArticleCommentCount {
     }
   }
 
-  public void setCount(int count) {
+  /**
+   * 댓글 수를 특정 값으로 설정합니다. (도메인 메서드)
+   *
+   * <p>주로 데이터 보정 용도로 사용됩니다.
+   * 0 미만의 값은 0으로 조정됩니다.
+   *
+   * @param count 설정할 댓글 수
+   */
+  public void updateCount(int count) {
     this.commentCount = Math.max(0, count);
   }
 }

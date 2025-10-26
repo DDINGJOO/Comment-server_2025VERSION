@@ -13,7 +13,6 @@ import com.teambind.commentserver.service.ArticleCommentCountService;
 import com.teambind.commentserver.service.CommentService;
 import com.teambind.commentserver.service.FirstCommentGate;
 import com.teambind.commentserver.utils.primarykey.PrimaryKeyProvider;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -41,33 +40,17 @@ public class CommentServiceImpl implements CommentService {
   @Override
   @Transactional
   public Comment createRootComment(String articleId, String writerId, String contents) {
-    // 루트 댓글은 자기 자신을 rootCommentId로 설정하고 depth=0 으로 저장한다.
+    // 루트 댓글 생성 팩토리 메서드 사용
     String id = primaryKeyProvider.generateKey();
-    Comment comment =
-        Comment.builder()
-            .commentId(id)
-            .articleId(articleId)
-            .writerId(writerId)
-            .contents(contents)
-            .depth(0)
-            .rootCommentId(id)
-            .build();
+    Comment comment = Comment.createRoot(id, articleId, writerId, contents);
 
     Comment saved = commentRepository.save(comment);
-    // TODO : 쿼리 최적화해야합니다.
-    // 생성 완료 후 article_comment_counts 카운트 증가
+
+    // 게시글 댓글 수 증가
     articleCommentCountService.increment(articleId);
 
-    // 이벤트: 해당 사용자가 해당 게시글에 단 첫 댓글인지(2일 윈도우) Redis로 판단하여 발행
-    // 한국어 주석: Redis SETNX(+TTL 2일) 성공 시에만 이벤트 발행. 실패 시(이미 존재) 스킵.
-    if (firstCommentGate.isFirstWithinWindow(articleId, writerId)) {
-      eventPublisher.CommentCreateEvent(
-          CommentCreatedEvent.builder()
-              .writerId(writerId)
-              .articleId(articleId)
-              .createdAt(LocalDateTime.now())
-              .build());
-    }
+    // 첫 댓글 이벤트 발행 (필요 시)
+    publishFirstCommentEventIfNeeded(articleId, writerId);
 
     return saved;
   }
@@ -75,47 +58,27 @@ public class CommentServiceImpl implements CommentService {
   @Override
   @Transactional
   public Comment createReply(String parentCommentId, String writerId, String contents) {
-    // 부모 댓글을 조회하고, 동일 아티클로 depth를 +1 하여 자식 댓글을 생성한다.
+    // 부모 댓글 조회
     Comment parent =
         commentRepository
             .findById(parentCommentId)
             .orElseThrow(() -> new CustomException(ErrorCode.PARENT_COMMENT_NOT_FOUND));
 
+    // 답글 생성 팩토리 메서드 사용
     String id = primaryKeyProvider.generateKey();
+    Comment reply = Comment.createReply(id, parent, writerId, contents);
 
-    // 부모의 rootCommentId가 없으면 부모 자신이 루트이므로 부모 id를 사용한다.
-    Comment reply =
-        Comment.builder()
-            .commentId(id)
-            .articleId(parent.getArticleId())
-            .writerId(writerId)
-            .contents(contents)
-            .parentCommentId(parent.getCommentId())
-            .rootCommentId(
-                parent.getRootCommentId() == null
-                    ? parent.getCommentId()
-                    : parent.getRootCommentId())
-            .depth((parent.getDepth() == null ? 0 : parent.getDepth()) + 1)
-            .build();
-
-    // 부모의 답글 수를 증가시킨다.
-    parent.incrementReplyCount();
-    commentRepository.save(parent);
+    // 부모의 답글 수를 증가시킨다 (연관관계 편의 메서드)
+    parent.addReply();
+    // parent는 JPA dirty checking으로 자동 업데이트됨
 
     Comment savedReply = commentRepository.save(reply);
 
-    // 생성 완료 후 article_comment_counts 카운트 증가 (부모와 동일한 article)
+    // 게시글 댓글 수 증가
     articleCommentCountService.increment(parent.getArticleId());
 
-    // 이벤트: 해당 사용자가 해당 게시글에 단 첫 댓글인지(2일 윈도우) Redis로 판단하여 발행
-    if (firstCommentGate.isFirstWithinWindow(parent.getArticleId(), writerId)) {
-      eventPublisher.CommentCreateEvent(
-          CommentCreatedEvent.builder()
-              .writerId(writerId)
-              .articleId(parent.getArticleId())
-              .createdAt(LocalDateTime.now())
-              .build());
-    }
+    // 첫 댓글 이벤트 발행 (필요 시)
+    publishFirstCommentEventIfNeeded(parent.getArticleId(), writerId);
 
     return savedReply;
   }
@@ -124,7 +87,7 @@ public class CommentServiceImpl implements CommentService {
   @Transactional(readOnly = true)
   public List<Comment> getAllCommentsByArticle(String articleId) {
     // 삭제되지 않은 댓글만 생성일 기준 오름차순으로 반환
-    return commentRepository.findByArticleIdOrderByCreatedAtAsc(articleId);
+    return commentRepository.findByArticleIdAndIsDeletedFalseOrderByCreatedAtAsc(articleId);
   }
 
   @Override
@@ -156,7 +119,7 @@ public class CommentServiceImpl implements CommentService {
             .findById(commentId)
             .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
 
-    if (!comment.getWriterId().equals(requesterId)) {
+    if (!comment.isOwnedBy(requesterId)) {
       throw new CustomException(ErrorCode.NOT_COMMENT_OWNER);
     }
 
@@ -165,18 +128,17 @@ public class CommentServiceImpl implements CommentService {
     }
 
     comment.markDeleted();
-    commentRepository.save(comment);
+    // comment는 JPA dirty checking으로 자동 업데이트됨
 
     // 이벤트: 해당 게시글의 남은 활성 댓글 수가 0이면(마지막 댓글 삭제) 이벤트 발행
     long remain =
         commentRepository.countByArticleIdAndIsDeletedFalseAndStatus(
             comment.getArticleId(), CommentStatus.ACTIVE);
     if (remain == 0) {
-      eventPublisher.CommentDeleteEvent(
+      eventPublisher.publishCommentDeleted(
           CommentDeletedEvent.builder()
               .writerId(comment.getWriterId())
               .articleId(comment.getArticleId())
-              .createdAt(LocalDateTime.now())
               .build());
     }
   }
@@ -185,20 +147,22 @@ public class CommentServiceImpl implements CommentService {
   @Transactional
   public Comment updateContents(String commentId, String requesterId, String newContents) {
     // 댓글 내용을 갱신한다. 작성자 본인만 가능
-    if (newContents == null || newContents.isBlank()) {
-      throw new CustomException(ErrorCode.CONTENTS_REQUIRED);
-    }
     Comment comment =
         commentRepository
             .findById(commentId)
             .orElseThrow(() -> new CustomException(ErrorCode.COMMENT_NOT_FOUND));
 
-    if (!comment.getWriterId().equals(requesterId)) {
+    if (!comment.isOwnedBy(requesterId)) {
       throw new CustomException(ErrorCode.NOT_COMMENT_OWNER);
     }
 
-    comment.setContents(newContents);
-    return commentRepository.save(comment);
+    try {
+      comment.updateContents(newContents);
+    } catch (IllegalArgumentException e) {
+      throw new CustomException(ErrorCode.CONTENTS_REQUIRED);
+    }
+
+    return comment;
   }
 
   // (선택) 간단한 스레드 정렬 유틸: 부모가 먼저, 자식이 뒤에 오도록 정렬
@@ -232,6 +196,10 @@ public class CommentServiceImpl implements CommentService {
     // 루트 + 자식들을 한 번에 조회
     List<Comment> rows = commentRepository.findRootsAndChildrenByRootIds(articleId, rootIds);
 
+    // 먼저 모든 댓글을 Map으로 변환 (O(1) 조회를 위해)
+    Map<String, Comment> commentMap =
+        rows.stream().collect(Collectors.toMap(Comment::getCommentId, Function.identity()));
+
     // 루트 순서를 보장하기 위해 LinkedHashMap 사용
     Map<String, CommentResponse> rootMap = new LinkedHashMap<>();
     for (String rootId : rootIds) {
@@ -245,9 +213,15 @@ public class CommentServiceImpl implements CommentService {
         String rootId = c.getRootCommentId();
         CommentResponse rootDto = rootMap.get(rootId);
         if (rootDto == null) {
-          // 루트 DTO가 아직 placeholder인 경우, 생성
-          rootDto = CommentResponse.from(commentRepository.findById(rootId).orElse(c));
-          rootMap.put(rootId, rootDto);
+          // 루트 DTO가 아직 placeholder인 경우, commentMap에서 조회 (N+1 문제 해결)
+          Comment rootComment = commentMap.get(rootId);
+          if (rootComment != null) {
+            rootDto = CommentResponse.from(rootComment);
+            rootMap.put(rootId, rootDto);
+          } else {
+            // 루트가 없는 경우 (데이터 정합성 문제) - 로그 남기고 스킵
+            continue;
+          }
         }
         rootDto.addReply(CommentResponse.from(c));
       }
@@ -255,5 +229,22 @@ public class CommentServiceImpl implements CommentService {
 
     // 결과 리스트(루트 순서대로)
     return rootMap.values().stream().filter(Objects::nonNull).collect(Collectors.toList());
+  }
+
+  /**
+   * 첫 댓글 생성 이벤트를 발행합니다. (필요한 경우에만)
+   *
+   * @param articleId 게시글 ID
+   * @param writerId 작성자 ID
+   */
+  private void publishFirstCommentEventIfNeeded(String articleId, String writerId) {
+    // 이벤트: 해당 사용자가 해당 게시글에 단 첫 댓글인지(2일 윈도우) Redis로 판단하여 발행
+    if (firstCommentGate.isFirstWithinWindow(articleId, writerId)) {
+      eventPublisher.publishCommentCreated(
+          CommentCreatedEvent.builder()
+              .writerId(writerId)
+              .articleId(articleId)
+              .build());
+    }
   }
 }

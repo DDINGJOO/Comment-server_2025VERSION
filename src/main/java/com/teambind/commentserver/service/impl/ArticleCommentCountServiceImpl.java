@@ -43,11 +43,13 @@ public class ArticleCommentCountServiceImpl implements ArticleCommentCountServic
       int updated = repository.upsertAndAdd(articleId, delta);
       if (updated == 0) {
         // upsertAndAdd 쿼리는 영향받은 row 수를 반환. 0이면 드물게 실패했을 수 있으므로 폴백
-        repository.save(
+        ArticleCommentCount newCount =
             ArticleCommentCount.builder()
                 .articleId(articleId)
-                .commentCount(Math.max(0, delta))
-                .build());
+                .commentCount(0)
+                .build();
+        newCount.updateCount(delta);
+        repository.save(newCount);
       }
     } catch (Exception ex) {
       log.warn(
@@ -61,7 +63,7 @@ public class ArticleCommentCountServiceImpl implements ArticleCommentCountServic
               .findById(articleId)
               .orElseGet(
                   () -> ArticleCommentCount.builder().articleId(articleId).commentCount(0).build());
-      acc.setCount(Math.max(0, acc.getCommentCount() + delta));
+      acc.updateCount(acc.getCommentCount() + delta);
       repository.save(acc);
     }
   }
@@ -90,13 +92,14 @@ public class ArticleCommentCountServiceImpl implements ArticleCommentCountServic
   @Transactional
   public void setCount(String articleId, int count) {
     // 존재하지 않으면 save, 존재하면 update
-    int updated = repository.setCount(articleId, Math.max(0, count));
+    int updated = repository.setCount(articleId, count);
     if (updated == 0) {
       ArticleCommentCount acc =
           ArticleCommentCount.builder()
               .articleId(articleId)
-              .commentCount(Math.max(0, count))
+              .commentCount(0)
               .build();
+      acc.updateCount(count);
       repository.save(acc);
     }
   }

@@ -22,7 +22,7 @@ public interface ArticleCommentCountRepository extends CrudRepository<ArticleCom
   @Transactional
   @Query(
       value =
-          "UPDATE article_comment_counts SET comment_count = comment_count + 1 WHERE article_id = :articleId",
+          "UPDATE article_comment_counts SET comment_count = comment_count + 1, updated_at = NOW() WHERE article_id = :articleId",
       nativeQuery = true)
   int incrementCommentCount(@Param("articleId") String articleId);
 
@@ -31,7 +31,7 @@ public interface ArticleCommentCountRepository extends CrudRepository<ArticleCom
   @Transactional
   @Query(
       value =
-          "UPDATE article_comment_counts SET comment_count = GREATEST(comment_count - 1, 0) WHERE article_id = :articleId",
+          "UPDATE article_comment_counts SET comment_count = GREATEST(comment_count - 1, 0), updated_at = NOW() WHERE article_id = :articleId",
       nativeQuery = true)
   int decrementCommentCount(@Param("articleId") String articleId);
 
@@ -43,8 +43,8 @@ public interface ArticleCommentCountRepository extends CrudRepository<ArticleCom
   @Transactional
   @Query(
       value =
-          "INSERT INTO article_comment_counts (article_id, comment_count) VALUES (:articleId, :delta) "
-              + "ON DUPLICATE KEY UPDATE comment_count = GREATEST(comment_count + :delta, 0)",
+          "INSERT INTO article_comment_counts (article_id, comment_count, updated_at) VALUES (:articleId, :delta, NOW()) "
+              + "ON DUPLICATE KEY UPDATE comment_count = GREATEST(comment_count + :delta, 0), updated_at = NOW()",
       nativeQuery = true)
   int upsertAndAdd(@Param("articleId") String articleId, @Param("delta") int delta);
 
@@ -53,7 +53,7 @@ public interface ArticleCommentCountRepository extends CrudRepository<ArticleCom
   @Transactional
   @Query(
       value =
-          "UPDATE article_comment_counts SET comment_count = :count WHERE article_id = :articleId",
+          "UPDATE article_comment_counts SET comment_count = :count, updated_at = NOW() WHERE article_id = :articleId",
       nativeQuery = true)
   int setCount(@Param("articleId") String articleId, @Param("count") int count);
 }

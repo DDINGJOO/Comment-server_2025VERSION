@@ -253,7 +253,7 @@ class CommentTest {
     @DisplayName("contents를 설정하고 조회할 수 있다")
     void contents_setGet() {
         Comment c = newEmpty();
-        c.setContents("text");
+        c.updateContents("text");
         assertEquals("text", c.getContents());
     }
 
