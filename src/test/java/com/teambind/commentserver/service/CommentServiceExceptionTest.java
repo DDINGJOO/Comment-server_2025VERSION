@@ -71,10 +71,10 @@ class CommentServiceExceptionTest {
   @Test
   void updateContents_null_throws() {
     // given
-    String dummyId = "dummy"; // 존재 여부와 무관하게 contents null 체크가 먼저 수행되지 않음에 유의
+    var comment = commentService.createRootComment("article-1", "user-1", "original");
 
     // when & then
-    assertThatThrownBy(() -> commentService.updateContents(dummyId, "user-1", null))
+    assertThatThrownBy(() -> commentService.updateContents(comment.getCommentId(), "user-1", null))
         .isInstanceOf(CustomException.class)
         .hasMessage(ErrorCode.CONTENTS_REQUIRED.getMessage())
         .satisfies(
@@ -87,10 +87,10 @@ class CommentServiceExceptionTest {
   @Test
   void updateContents_blank_throws() {
     // given
-    String dummyId = "dummy";
+    var comment = commentService.createRootComment("article-1", "user-1", "original");
 
     // when & then
-    assertThatThrownBy(() -> commentService.updateContents(dummyId, "user-1", "  \t\n"))
+    assertThatThrownBy(() -> commentService.updateContents(comment.getCommentId(), "user-1", "  \t\n"))
         .isInstanceOf(CustomException.class)
         .hasMessage(ErrorCode.CONTENTS_REQUIRED.getMessage())
         .satisfies(
